@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="utf-8">
-    <title>~Rugby COVID Numbers</title>
+    <title>Rugby COVID Numbers</title>
     <style>
         img {
             height: 100px;
@@ -12,14 +12,17 @@
     <script src="https://code.jquery.com/jquery-3.5.0.js"></script>
 </head>
 <body>
-
-<div id="images"></div>
+<div id="area"></div>
+<br/>
+<div id="age"></div>
+<br/>
+<div id="specimen"></div>
 
 <script>
-    (function () {
+        (function () {
         byArea();
         byAge();
-        bySpeciminDate();
+        bySpecimenDate();
     })();
 
     function byArea() {
@@ -31,16 +34,14 @@
         })
             .done(function (response) {
 
-                const millis = Date.now() ;
-
                 let date = new Date();
                 var past5 = date.getHours() > 17;
                 date = date.setDate(date.getDate() - (past5?5:6));
                 let d = dateToCovidApiDate(date);
 
-                document.write("Rolling 7 day per 100,000 rate (and rolling 7 day per 100,000 sum) by area. Data up to " + CovidApiDateToDisplayDate(date) + ":<br>");
+                $(area).append("Rolling 7 day per 100,000 rate (and rolling 7 day per 100,000 sum) by area. Data up to " + CovidApiDateToDisplayDate(date) + ":<br>");
 
-                document.write(response.body
+                $(area).append(response.body
                     .filter(obj => {
                         return obj.date === d;
                     })
@@ -53,12 +54,10 @@
                     })
                     .join("<br>")
                 );
-
-                document.write("<br><br>");
             });
     }
 
-    function bySpeciminDate() {
+    function bySpecimenDate() {
         var endpoint = (
             'https://api.coronavirus.data.gov.uk/v1/data?' +
             'filters=areaType=ltla;areaName=Rugby&' +
@@ -69,22 +68,20 @@
         })
             .done(function (response) {
 
-                document.write("Actual cases by specimen date for all Rugby:<br>");
+                $(specimen).append("Actual cases by specimen date for all Rugby:<br>");
 
                 var index = 0;
 
-                document.write(response.data
+                $(specimen).append(response.data
                     .slice(0, 11)
                     .reverse()
                     .map(obj => {
                         var newCases = ("" + obj.newCasesBySpecimenDate + " ").padEnd(4, "-");
                         var provisional = index++ >= 7;
-                        return newCases + " " + CovidApiDateToDisplayDate(obj.date) + (provisional?" &nbsp;(provisional)":"");
+                        return newCases + " " + CovidApiDateToDisplayDate(obj.date) + (provisional ? " &nbsp;(provisional)" : "");
                     })
                     .join("<br>")
                 );
-
-                document.write("<br><br>");
             });
     }
 
@@ -99,9 +96,9 @@
         })
             .done(function (response) {
 
-                document.write("Rolling 7 day per 100,000 rate (and rolling 7 day per 100,000 sum) by age for all Rugby. Data up to " + CovidApiDateToDisplayDate(response.data[0].date) + ":<br>");
+                $(age).append("Rolling 7 day per 100,000 rate (and rolling 7 day per 100,000 sum) by age for all Rugby. Data up to " + CovidApiDateToDisplayDate(response.data[0].date) + ":<br>");
 
-                document.write(response.data[0].newCasesBySpecimenDateAgeDemographics
+                $(age).append(response.data[0].newCasesBySpecimenDateAgeDemographics
                     .filter(obj => {
                         return obj.age !== "00_59" &&
                             obj.age !== "unassigned" &&
@@ -115,7 +112,7 @@
                     .join("<br>")
                 );
 
-                document.write("<br><br>");
+                // document.write("<br><br>");
             });
     }
 
