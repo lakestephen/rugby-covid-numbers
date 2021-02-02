@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>~Rugby COVID Numbers</title>
+    <style>
+        img {
+            height: 100px;
+            float: left;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.5.0.js"></script>
+</head>
+<body>
+
+<div id="images"></div>
+
+<script>
+    (function () {
+        byArea();
+        byAge();
+        bySpeciminDate();
+    })();
+
+    function byArea() {
+        var endpoint = (
+            'https://api.coronavirus.data.gov.uk/v2/data?areaType=msoa&areaCode=E07000220&metric=newCasesBySpecimenDateRollingSum&metric=newCasesBySpecimenDateRollingRate'
+        );
+        $.getJSON(endpoint, {
+            format: "json"
+        })
+            .done(function (response) {
+
+                const millis = Date.now() ;
+
+                let date = new Date();
+                var past5 = date.getHours() > 17;
+                date = date.setDate(date.getDate() - (past5?5:6));
+                let d = dateToCovidApiDate(date);
+
+                document.write("Rolling 7 day per 100,000 rate (and rolling 7 day per 100,000 sum) by area. Data up to " + CovidApiDateToDisplayDate(date) + ":<br>");
+
+                document.write(response.body
+                    .filter(obj => {
+                        return obj.date === d;
+                    })
+                    .sort((a, b) => {
+                        return b.newCasesBySpecimenDateRollingRate - a.newCasesBySpecimenDateRollingRate;
+                    })
+                    .map(obj => {
+                        var newCases = ("" + obj.newCasesBySpecimenDateRollingRate.toFixed(0) + " (" + obj.newCasesBySpecimenDateRollingSum + ") ").padEnd(10, "-");
+                        return newCases+ " " + obj.areaName;
+                    })
+                    .join("<br>")
+                );
+
+                document.write("<br><br>");
+            });
+    }
+
+    function bySpeciminDate() {
+        var endpoint = (
+            'https://api.coronavirus.data.gov.uk/v1/data?' +
+            'filters=areaType=ltla;areaName=Rugby&' +
+            'structure={"date":"date","newCasesBySpecimenDate":"newCasesBySpecimenDate"}'
+        );
+        $.getJSON(endpoint, {
+            format: "json"
+        })
+            .done(function (response) {
+
+                document.write("Actual cases by specimen date for all Rugby:<br>");
+
+                var index = 0;
+
+                document.write(response.data
+                    .slice(0, 11)
+                    .reverse()
+                    .map(obj => {
+                        var newCases = ("" + obj.newCasesBySpecimenDate + " ").padEnd(4, "-");
+                        var provisional = index++ >= 7;
+                        return newCases + " " + CovidApiDateToDisplayDate(obj.date) + (provisional?" &nbsp;(provisional)":"");
+                    })
+                    .join("<br>")
+                );
+
+                document.write("<br><br>");
+            });
+    }
+
+    function byAge() {
+        var endpoint = (
+            'https://api.coronavirus.data.gov.uk/v1/data?' +
+            'filters=areaType=ltla;areaName=Rugby&' +
+            'structure={"date":"date","newCasesBySpecimenDateAgeDemographics":"newCasesBySpecimenDateAgeDemographics"}'
+        );
+        $.getJSON(endpoint, {
+            format: "json"
+        })
+            .done(function (response) {
+
+                document.write("Rolling 7 day per 100,000 rate (and rolling 7 day per 100,000 sum) by age for all Rugby. Data up to " + CovidApiDateToDisplayDate(response.data[0].date) + ":<br>");
+
+                document.write(response.data[0].newCasesBySpecimenDateAgeDemographics
+                    .filter(obj => {
+                        return obj.age !== "00_59" &&
+                            obj.age !== "unassigned" &&
+                            obj.age !== "60+"
+                    })
+                    .map(obj => {
+                        var rollingRate = ("" + obj.rollingRate.toFixed(0) + " (" + obj.rollingSum + ") ").padEnd(10, "-");
+                        let ageRange = obj.age.replace("_", " > ");
+                        return rollingRate + " " + ageRange;
+                    })
+                    .join("<br>")
+                );
+
+                document.write("<br><br>");
+            });
+    }
+
+    function CovidApiDateToDisplayDate(dateString) {
+        let date = new Date(dateString);
+
+        let monthNames = ["Jan", "Feb", "Mar", "Apr",
+            "May", "Jun", "Jul", "Aug",
+            "Sep", "Oct", "Nov", "Dec"];
+
+        let day = date.getDate();
+        let monthName = monthNames[date.getMonth()];
+
+        return `${day} ${monthName}`;
+    }
+
+    function dateToCovidApiDate(d) {
+        let date = new Date(d);
+        let day = date.getDate();
+        let month = ("" + date.getMonth() + 1).padStart(2, "0");
+        let year = date.getFullYear();
+
+        return `${year}-${month}-${day}`;
+
+    }
+
+</script>
+
+</body>
+</html>
