@@ -37,7 +37,8 @@
 
                 let date = new Date();
                 var past4oclock = date.getHours() >= 16;
-                date = date.setDate(date.getDate() - (past4oclock ? 5 : 6));
+                date.setDate(date.getDate() - (past4oclock ? 5 : 6));
+
                 let d = dateToCovidApiDate(date);
 
                 $(area).append("Rolling 7 day per 100,000 rate (and rolling 7 day per 100,000 sum) by area. Data up to " + CovidApiDateToDisplayDate(date) + ":<br>");
@@ -191,10 +192,9 @@
         return `${weekdayName} ${day} ${monthName}`;
     }
 
-    function dateToCovidApiDate(d) {
-        let date = new Date(d);
-        let day = date.getDate();
-        let month = ("" + date.getMonth() + 1).padStart(2, "0");
+    function dateToCovidApiDate(date) {
+        let day = ("" + date.getDay()).padStart(2, "0");
+        let month = ("" + (date.getMonth() + 1)).padStart(2, "0");
         let year = date.getFullYear();
 
         return `${year}-${month}-${day}`;
