@@ -12,17 +12,18 @@
     <script src="https://code.jquery.com/jquery-3.5.0.js"></script>
 </head>
 <body>
+<pre>
 <div id="area"></div>
-<br/>
 <div id="age"></div>
-<br/>
 <div id="specimen"></div>
-
+<div id="projection"></div>
+</pre>
 <script>
-        (function () {
+    (function () {
         byArea();
         byAge();
         bySpecimenDate();
+        byProjection();
     })();
 
     function byArea() {
@@ -35,8 +36,8 @@
             .done(function (response) {
 
                 let date = new Date();
-                var past5 = date.getHours() > 17;
-                date = date.setDate(date.getDate() - (past5?5:6));
+                var past4oclock = date.getHours() >= 16;
+                date = date.setDate(date.getDate() - (past4oclock ? 5 : 6));
                 let d = dateToCovidApiDate(date);
 
                 $(area).append("Rolling 7 day per 100,000 rate (and rolling 7 day per 100,000 sum) by area. Data up to " + CovidApiDateToDisplayDate(date) + ":<br>");
@@ -49,36 +50,10 @@
                         return b.newCasesBySpecimenDateRollingRate - a.newCasesBySpecimenDateRollingRate;
                     })
                     .map(obj => {
-                        var newCases = ("" + obj.newCasesBySpecimenDateRollingRate.toFixed(0) + " (" + obj.newCasesBySpecimenDateRollingSum + ") ").padEnd(10, "-");
-                        return newCases+ " " + obj.areaName;
-                    })
-                    .join("<br>")
-                );
-            });
-    }
-
-    function bySpecimenDate() {
-        var endpoint = (
-            'https://api.coronavirus.data.gov.uk/v1/data?' +
-            'filters=areaType=ltla;areaName=Rugby&' +
-            'structure={"date":"date","newCasesBySpecimenDate":"newCasesBySpecimenDate"}'
-        );
-        $.getJSON(endpoint, {
-            format: "json"
-        })
-            .done(function (response) {
-
-                $(specimen).append("Actual cases by specimen date for all Rugby:<br>");
-
-                var index = 0;
-
-                $(specimen).append(response.data
-                    .slice(0, 11)
-                    .reverse()
-                    .map(obj => {
-                        var newCases = ("" + obj.newCasesBySpecimenDate + " ").padEnd(4, "-");
-                        var provisional = index++ >= 7;
-                        return newCases + " " + CovidApiDateToDisplayDate(obj.date) + (provisional ? " &nbsp;(provisional)" : "");
+                        return ("" + obj.newCasesBySpecimenDateRollingRate.toFixed(0)).padEnd(4, " ") +
+                            ("(" + obj.newCasesBySpecimenDateRollingSum + ") ").padEnd(5, " ") +
+                            "- " +
+                            obj.areaName;
                     })
                     .join("<br>")
                 );
@@ -105,17 +80,100 @@
                             obj.age !== "60+"
                     })
                     .map(obj => {
-                        var rollingRate = ("" + obj.rollingRate.toFixed(0) + " (" + obj.rollingSum + ") ").padEnd(10, "-");
-                        let ageRange = obj.age.replace("_", " > ");
-                        return rollingRate + " " + ageRange;
+                        return ("" + obj.rollingRate.toFixed(0)).padEnd(4, " ") +
+                            ("(" + obj.rollingSum + ") ").padEnd(5, " ") +
+                            "- " +
+                            obj.age.replace("_", " > ");
                     })
                     .join("<br>")
                 );
-
-                // document.write("<br><br>");
             });
     }
 
+    function bySpecimenDate() {
+        var endpoint = (
+            'https://api.coronavirus.data.gov.uk/v1/data?' +
+            'filters=areaType=ltla;areaName=Rugby&' +
+            'structure={"date":"date","newCasesBySpecimenDate":"newCasesBySpecimenDate"}'
+        );
+        $.getJSON(endpoint, {
+            format: "json"
+        })
+            .done(function (response) {
+
+                $(specimen).append("Actual cases by specimen date for all Rugby:<br>");
+
+                var index = 0;
+
+                $(specimen).append(response.data
+                    .slice(0, 11)
+                    .reverse()
+                    .map(obj => {
+                        var provisional = index++ >= 7;
+                        return ("" + obj.newCasesBySpecimenDate + " ").padEnd(3, " ") +
+                            "- " +
+                            CovidApiDateToDisplayDate(obj.date).padEnd(11, " ") +
+                            (provisional ? "(provisional)" : "(incl. in rolling rate)");
+
+                    })
+                    .join("<br>")
+                );
+            });
+    }
+
+    function byProjection() {
+        var endpoint = (
+            'https://api.coronavirus.data.gov.uk/v1/data?' +
+            'filters=areaType=ltla;areaName=Rugby&' +
+            'structure={"date":"date","newCasesBySpecimenDate":"newCasesBySpecimenDate"}'
+        );
+        $.getJSON(endpoint, {
+            format: "json"
+        })
+            .done(function (response) {
+
+                $(projection).append("Rolling 7 day per 100,000 rate (and rolling 7 day per 100,000 sum) by date for all Rugby:<br>");
+                $(projection).append(
+                    "The first 6 rows of numbers can differ (usually only by 1 or 2) from the numbers RBC posted historically because of late arriving test results.   <br>" +
+                    "The final 4 rows of numbers should be treated with caution as they are incomplete projections (the final number is especially liable to be wrong).   <br>" +
+                    "These final 4 rows of numbers represent the current LOWER bound and can only increase (get worse) as new test data comes in.   <br>" +
+                    "The speed the test data comes in is affected by weekends, snow, bank holidays Etc.  <br>" +
+                    "If you are uncomfortable with those caveats, then please ignore these numbers. <br>");
+
+                var index = 0;
+
+                let data = [];
+                for (i=0;i<11;i++) {
+                    data[i] = response.data.slice(i,i+7);
+                }
+
+                $(projection).append(data
+                    .reverse()
+                    .map(obj => {
+                        let date = obj[0].date;
+
+                        let sum = obj
+                            .map(b => b.newCasesBySpecimenDate)
+                            .reduce((accumulator, currentValue) => accumulator + currentValue);
+
+                        let population = 108932;
+                        let per100000 = (sum *100000)/population;
+
+                        index++;
+                        return ("" + per100000.toFixed(0) + " ").padEnd(4, " ") +
+                            ("(" + sum + ") ").padEnd(6, " ") +
+                            "- " +
+                            CovidApiDateToDisplayDate(date).padEnd(11, " ") +
+                            ((index <= 6) ? "(High confidence)" : "") +
+                            ((index >= 8) && (index <= 10)? "(PROJECTED - VIEW WITH CAUTION!!!)" : "") +
+                            ((index >=11)? "(PROJECTED - PROBABLY SIGNIFICANT UNDER ESTIMATE - VIEW WITH EXTREME CAUTION!!!)" : "");
+
+
+                    })
+                    .join("<br>")
+                );
+            });
+    }
     function CovidApiDateToDisplayDate(dateString) {
         let date = new Date(dateString);
 
@@ -123,10 +181,14 @@
             "May", "Jun", "Jul", "Aug",
             "Sep", "Oct", "Nov", "Dec"];
 
+        let weekdayNames = ["Sun", "Mon", "Tue",
+            "Wed", "Thr", "Fri", "Sat"]
+
         let day = date.getDate();
         let monthName = monthNames[date.getMonth()];
+        let weekdayName = weekdayNames[date.getDay()];
 
-        return `${day} ${monthName}`;
+        return `${weekdayName} ${day} ${monthName}`;
     }
 
     function dateToCovidApiDate(d) {
