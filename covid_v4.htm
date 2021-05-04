@@ -1,0 +1,372 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Rugby COVID Numbers</title>
+    <style>
+        img {
+            height: 100px;
+            float: left;
+        }
+    </style>
+    <script src="https://code.jquery.com/jquery-3.5.0.js"></script>
+</head>
+<body>
+<pre>
+<div id="byRanking"></div>
+<div id="area"></div>
+<div id="age"></div>
+<div id="specimen"></div>
+<div id="projection"></div>
+<div id="admissions"></div>
+</pre>
+<script>
+    (function () {
+        ranking();
+        byArea();
+        byAge();
+        bySpecimenDate();
+        byProjection();
+        newAdmissions();
+    })();
+
+    function ranking() {
+        var ltlaEndpoint = (
+            'https://api.coronavirus.data.gov.uk/v2/data?areaType=ltla&metric=newCasesBySpecimenDateRollingRate&format=json'
+        );
+        var warwickshireEndpoint = (
+            'https://api.coronavirus.data.gov.uk/v2/data?areaType=utla&areaCode=E10000031&metric=newCasesBySpecimenDateRollingRate&format=json'
+        );
+        var nationalEndpoint = (
+            'https://api.coronavirus.data.gov.uk/v2/data?areaType=overview&metric=newCasesBySpecimenDateRollingRate&format=json'
+        );
+
+
+        $.when(
+            $.getJSON(ltlaEndpoint, {
+                format: "json"
+            }),
+            $.getJSON(warwickshireEndpoint, {
+                format: "json"
+            }),
+            $.getJSON(nationalEndpoint, {
+                format: "json"
+            })
+        )
+            .done(function (ltlaResponse, warwickshireResponse, nationalResponse) {
+
+                let date = new Date();
+                var past4oclock = date.getHours() >= 16;
+                date.setDate(date.getDate() - (past4oclock ? 5 : 6));
+
+                let d = dateToCovidApiDate(date);
+
+                let rugbyPer1000000 = ltlaResponse[0].body
+                    .filter(obj => {
+                        return obj.date === d;
+                    })
+                    .filter(obj => {
+                        return obj.areaCode === "E07000220";
+                    })
+                    .map(obj => {
+                        return obj.newCasesBySpecimenDateRollingRate;
+                    });
+
+                let warwickshirePer1000000 = warwickshireResponse[0].body
+                    .filter(obj => {
+                        return obj.date === d;
+                    })
+                    .map(obj => {
+                        return obj.newCasesBySpecimenDateRollingRate;
+                    });
+
+                let nationalPer1000000 = nationalResponse[0].body
+                    .filter(obj => {
+                        return obj.date === d;
+                    })
+                    .map(obj => {
+                        return obj.newCasesBySpecimenDateRollingRate;
+                    });
+
+                let rugbyPosition = ltlaResponse[0].body
+                    .filter(obj => {
+                        return obj.date === d;
+                    })
+                    .filter(obj => {
+                        return obj.newCasesBySpecimenDateRollingRate > rugbyPer1000000;
+                    })
+                    .length;
+
+                let percentageAboveWarwickshire = ((rugbyPer1000000 / warwickshirePer1000000) * 100);
+                let percentageAboveNational = ((rugbyPer1000000 / nationalPer1000000) * 100);
+
+                $(byRanking).append("Rankings. Data up to " + CovidApiDateToDisplayDate(date) + ":<br>");
+
+                $(byRanking).append("Rugby rate " + rugbyPer1000000 + " per 100,000 <br><br>");
+
+                $(byRanking).append("Warwickshire rate " + warwickshirePer1000000 + " per 100,000 <br>");
+                $(byRanking).append("Rugby is " + percentageAboveWarwickshire.toPrecision(3) + "% of the Warwickshire rate <br><br>");
+
+                $(byRanking).append("National rate " + nationalPer1000000 + " per 100,000 <br>");
+                $(byRanking).append("Rugby is " + percentageAboveNational.toPrecision(3) + "% of the national rate <br><br>");
+
+                $(byRanking).append("Rugby has the " + rugbyPosition + nth(rugbyPosition) + " highest local authority case rate out of 380 local authority areas <br>");
+
+            });
+    }
+
+    function byArea() {
+        var endpoint = (
+            'https://api.coronavirus.data.gov.uk/v2/data?areaType=msoa&areaCode=E07000220&metric=newCasesBySpecimenDateRollingSum&metric=newCasesBySpecimenDateRollingRate'
+        );
+        $.getJSON(endpoint, {
+            format: "json"
+        })
+            .done(function (response) {
+
+                let date = new Date();
+                var past4oclock = date.getHours() >= 16;
+                date.setDate(date.getDate() - (past4oclock ? 5 : 6));
+
+                let d = dateToCovidApiDate(date);
+
+                $(area).append("Rolling 7 day per 100,000 rate [and rolling 7 day cases sum] by area. Data up to " + CovidApiDateToDisplayDate(date) + ":<br>");
+
+                let areas = response.body
+                    .filter(obj => {
+                        return obj.date === d;
+                    });
+                let allAreas = JSON.parse('[' +
+                    '{"areaName":"Town East","newCasesBySpecimenDateRollingRate":null},' +
+                    '{"areaName":"Wolston, Binley Woods & Ryton","newCasesBySpecimenDateRollingRate":null},' +
+                    '{"areaName":"Cawston & Long Lawford","newCasesBySpecimenDateRollingRate":null},' +
+                    '{"areaName":"Hillmorton","newCasesBySpecimenDateRollingRate":null},' +
+                    '{"areaName":"New Bilton","newCasesBySpecimenDateRollingRate":null},' +
+                    '{"areaName":"Brownsover","newCasesBySpecimenDateRollingRate":null},' +
+                    '{"areaName":"Town South & School","newCasesBySpecimenDateRollingRate":null},' +
+                    '{"areaName":"Overslade & Bilton","newCasesBySpecimenDateRollingRate":null},' +
+                    '{"areaName":"Town North & Newbold on Avon","newCasesBySpecimenDateRollingRate":null},' +
+                    '{"areaName":"Brinklow, Wolvey & Clifton","newCasesBySpecimenDateRollingRate":null},' +
+                    '{"areaName":"Eastlands","newCasesBySpecimenDateRollingRate":null},' +
+                    '{"areaName":"Dunchurch, Stretton-on-Dunsmore & Marton","newCasesBySpecimenDateRollingRate":null}' +
+                    ']');
+
+                allAreas = allAreas.filter(item => {
+                    return areas.filter(item2 => (item2.areaName === item.areaName)).length !== 1;
+                });
+
+                $(area).append(
+                    areas
+                        .concat(allAreas)
+                        .sort((a, b) => {
+                            return b.newCasesBySpecimenDateRollingRate - a.newCasesBySpecimenDateRollingRate;
+                        })
+                        .map(obj => {
+                            if (obj.newCasesBySpecimenDateRollingRate === null) {
+                                return "- [< 3] - " +
+                                    obj.areaName;
+                            } else {
+                                return ("" + obj.newCasesBySpecimenDateRollingRate.toFixed(0)).padEnd(4, " ") +
+                                    ("[" + obj.newCasesBySpecimenDateRollingSum + "]").padEnd(5, " ") +
+                                    "- " +
+                                    obj.areaName;
+                            }
+                        })
+                        .join("<br>"));
+            });
+    }
+
+    function byAge() {
+        var endpoint = (
+            'https://api.coronavirus.data.gov.uk/v1/data?' +
+            'filters=areaType=ltla;areaName=Rugby&' +
+            'structure={"date":"date","newCasesBySpecimenDateAgeDemographics":"newCasesBySpecimenDateAgeDemographics"}'
+        );
+        $.getJSON(endpoint, {
+            format: "json"
+        })
+            .done(function (response) {
+
+                $(age).append("Rolling 7 day per 100,000 rate [and rolling 7 day cases sum] by age for all Rugby. Data up to " + CovidApiDateToDisplayDate(response.data[0].date) + ":<br>");
+
+                $(age).append(response.data[0].newCasesBySpecimenDateAgeDemographics
+                    .filter(obj => {
+                        return obj.age !== "00_59" &&
+                            obj.age !== "unassigned" &&
+                            obj.age !== "60+"
+                    })
+                    .map(obj => {
+                        return ("" + obj.rollingRate.toFixed(0)).padEnd(4, " ") +
+                            ("[" + obj.rollingSum + "]").padEnd(5, " ") +
+                            "- " +
+                            obj.age.replace("_", " > ");
+                    })
+                    .join("<br>")
+                );
+            });
+    }
+
+    function bySpecimenDate() {
+        var endpoint = (
+            'https://api.coronavirus.data.gov.uk/v1/data?' +
+            'filters=areaType=ltla;areaName=Rugby&' +
+            'structure={"date":"date","newCasesBySpecimenDate":"newCasesBySpecimenDate"}'
+        );
+        $.getJSON(endpoint, {
+            format: "json"
+        })
+            .done(function (response) {
+
+                $(specimen).append("Actual cases by specimen date for all Rugby:<br>");
+
+                var index = 0;
+
+                $(specimen).append(response.data
+                    .slice(0, 11)
+                    .reverse()
+                    .map(obj => {
+                        var provisional = index++ >= 7;
+                        return ("" + obj.newCasesBySpecimenDate + " ").padEnd(3, " ") +
+                            "- " +
+                            CovidApiDateToDisplayDate(obj.date).padEnd(11, " ") +
+                            (provisional ? "(provisional)" : "(incl. in rolling rate)");
+
+                    })
+                    .join("<br>")
+                );
+            });
+    }
+
+
+    function byProjection() {
+        var endpoint = (
+            'https://api.coronavirus.data.gov.uk/v1/data?' +
+            'filters=areaType=ltla;areaName=Rugby&' +
+            'structure={"date":"date","newCasesBySpecimenDate":"newCasesBySpecimenDate"}'
+        );
+        $.getJSON(endpoint, {
+            format: "json"
+        })
+            .done(function (response) {
+
+                $(projection).append("Rolling 7 day per 100,000 rate [and rolling 7 day cases sum] by date for all Rugby:<br>");
+                $(projection).append(
+                    "The final 4 rows of numbers should be treated with caution as they are incomplete projections (the final number is especially liable to be wrong). " +
+                    "If you are uncomfortable with those caveats, then please ignore these numbers. <br>");
+
+                var index = 0;
+
+                let data = [];
+                for (i = 0; i < 11; i++) {
+                    data[i] = response.data.slice(i, i + 7);
+                }
+
+                $(projection).append(data
+                    .reverse()
+                    .map(obj => {
+                        let date = obj[0].date;
+
+                        let sum = obj
+                            .map(b => b.newCasesBySpecimenDate)
+                            .reduce((accumulator, currentValue) => accumulator + currentValue);
+
+                        let population = 108932;
+                        let per100000 = (sum * 100000) / population;
+
+                        index++;
+                        return ("" + per100000.toFixed(0) + " ").padEnd(4, " ") +
+                            ("[" + sum + "] ").padEnd(6, " ") +
+                            "- " +
+                            CovidApiDateToDisplayDate(date).padEnd(11, " ") +
+                            // ((index <= 6) ? "(Historical)" : "") +
+                            ((index == 7) ? "(Today's)" : "") +
+                            ((index >= 8) && (index <= 9) ? "(PROJECTED)" : "") +
+                            ((index >= 10) && (index <= 10) ? "(PROJECTED - CAUTION!!!)" : "") +
+                            ((index >= 11) ? "(PROJECTED - EXTREME CAUTION!!!)" : "");
+
+
+                    })
+                    .join("<br>")
+                );
+            });
+    }
+
+    function newAdmissions() {
+        var endpoint = (
+            'https://api.coronavirus.data.gov.uk/v2/data?areaType=nhsTrust&areaCode=RKB&metric=covidOccupiedMVBeds&metric=newAdmissions&metric=hospitalCases&format=csv'
+        );
+        $.getJSON(endpoint, {
+            format: "json"
+        })
+            .done(function (response) {
+                let date = new Date();
+                var past4oclock = date.getHours() >= 16;
+                date.setDate(date.getDate() - (past4oclock ? 5 : 6));
+
+                $(admissions).append("Patients admitted to hospital [and Patients in hospital] {and Patients in mechanical ventilation beds} for University Hospitals Coventry and Warwickshire NHS Trust:<br>");
+
+                $(admissions).append(response.body
+                    .slice(0, 11)
+                    .reverse()
+                    .map(obj => {
+
+                        return ("" + ((obj.newAdmissions === null)?"-":obj.newAdmissions) + ", ").padEnd(3, " ") +
+                            ("[" + ((obj.hospitalCases === null)?"-":obj.hospitalCases) + "], ").padEnd(6, " ") +
+                            ("{" + obj.covidOccupiedMVBeds + "} ").padEnd(5, " ") +
+                            "- " +
+                            CovidApiDateToDisplayDate(obj.date).padEnd(11, " ");
+                        // +
+                        //     (provisional ? "(provisional)" : "(incl. in rolling rate)");
+
+                    })
+                    .join("<br>")
+                );
+            });
+
+
+    }
+
+    function CovidApiDateToDisplayDate(dateString) {
+        let date = new Date(dateString);
+
+        let monthNames = ["Jan", "Feb", "Mar", "Apr",
+            "May", "Jun", "Jul", "Aug",
+            "Sep", "Oct", "Nov", "Dec"];
+
+        let weekdayNames = ["Sun", "Mon", "Tue",
+            "Wed", "Thr", "Fri", "Sat"]
+
+        let day = date.getDate();
+        let monthName = monthNames[date.getMonth()];
+        let weekdayName = weekdayNames[date.getDay()];
+
+        return `${weekdayName} ${day} ${monthName}`;
+    }
+
+    function dateToCovidApiDate(date) {
+        let day = ("" + date.getDate()).padStart(2, "0");
+        let month = ("" + (date.getMonth() + 1)).padStart(2, "0");
+        let year = date.getFullYear();
+
+        return `${year}-${month}-${day}`;
+
+    }
+
+    const nth = function (d) {
+        if (d > 3 && d < 21) return 'th';
+        switch (d % 10) {
+            case 1:
+                return "st";
+            case 2:
+                return "nd";
+            case 3:
+                return "rd";
+            default:
+                return "th";
+        }
+    }
+
+</script>
+
+</body>
+</html>
