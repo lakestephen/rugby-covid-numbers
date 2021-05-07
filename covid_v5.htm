@@ -306,18 +306,17 @@
                 $(admissions).append("Patients admitted to hospital [and Patients in hospital] {and Patients in mechanical ventilation beds} for University Hospitals Coventry and Warwickshire NHS Trust:<br>");
 
                 $(admissions).append(response.body
+                    .sort((a, b) => {
+                        return Date.parse(b.date) - Date.parse(a.date);
+                    })
                     .slice(0, 11)
                     .reverse()
                     .map(obj => {
-
                         return ("" + ((obj.newAdmissions === null)?"-":obj.newAdmissions) + ", ").padEnd(3, " ") +
                             ("[" + ((obj.hospitalCases === null)?"-":obj.hospitalCases) + "], ").padEnd(6, " ") +
                             ("{" + obj.covidOccupiedMVBeds + "} ").padEnd(5, " ") +
                             "- " +
                             CovidApiDateToDisplayDate(obj.date).padEnd(11, " ");
-                        // +
-                        //     (provisional ? "(provisional)" : "(incl. in rolling rate)");
-
                     })
                     .join("<br>")
                 );
@@ -340,7 +339,7 @@
         let monthName = monthNames[date.getMonth()];
         let weekdayName = weekdayNames[date.getDay()];
 
-        return `${weekdayName} ${day} ${monthName}`;
+        return `${weekdayName} ${day} ${monthName}  ${date.getFullYear()}`;
     }
 
     function dateToCovidApiDate(date) {
