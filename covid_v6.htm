@@ -95,7 +95,7 @@
                     .filter(obj => {
                         return obj.newCasesBySpecimenDateRollingRate > rugbyPer1000000;
                     })
-                    .length;
+                    .length +1;
 
                 let percentageAboveWarwickshire = ((rugbyPer1000000 / warwickshirePer1000000) * 100);
                 let percentageAboveNational = ((rugbyPer1000000 / nationalPer1000000) * 100);
@@ -110,7 +110,7 @@
                 $(byRanking).append("National rate " + nationalPer1000000 + " per 100,000 <br>");
                 $(byRanking).append("Rugby is " + percentageAboveNational.toPrecision(3) + "% of the national rate <br><br>");
 
-                $(byRanking).append("Rugby has the " + rugbyPosition + nth(rugbyPosition) + " highest local authority case rate out of 380 local authority areas <br>");
+                $(byRanking).append("Rugby has the " + (rugbyPosition) + nth(rugbyPosition) + " highest local authority case rate out of 380 local authority areas <br>");
 
             });
     }
